@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { detectIntent, subAgents, projectsData } from '@/lib/agents';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// Ensure this route always runs on Node.js and is not statically optimized
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +15,14 @@ export async function POST(request: NextRequest) {
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
+
+    // Initialize Groq client at request-time to avoid build-time/env issues
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      console.error('GROQ_API_KEY is not set');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+    const groq = new Groq({ apiKey });
 
     // Detect intent and get appropriate agent
     const intent = detectIntent(message);
@@ -81,3 +91,4 @@ Keep responses concise but informative. Do not use asterisks or bold formatting 
     );
   }
 }
+
