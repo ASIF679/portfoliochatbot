@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { detectIntent, subAgents, projectsData } from '@/lib/agents';
-import { getGroqApiKey } from '@/lib/env';
+import { getGroqApiKeyAsync } from '@/lib/env';
 
 // Ensure this route always runs on Node.js and is not statically optimized
 export const runtime = 'nodejs';
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Initialize Groq client at request-time to avoid build-time/env issues
     let apiKey: string;
     try {
-      apiKey = getGroqApiKey();
+      apiKey = await getGroqApiKeyAsync();
     } catch (e) {
       console.error('GROQ_API_KEY is not set');
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
