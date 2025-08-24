@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { detectIntent, subAgents, projectsData } from '@/lib/agents';
+import { getGroqApiKey } from '@/lib/env';
 
 // Ensure this route always runs on Node.js and is not statically optimized
 export const runtime = 'nodejs';
@@ -10,6 +11,11 @@ export const fetchCache = 'force-no-store';
 
 export async function POST(request: NextRequest) {
   try {
+    // Restrict to production on Vercel; allow local development
+    if (process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production') {
+      return NextResponse.json({ error: 'API not available in this environment' }, { status: 403 });
+    }
+
     const { message } = await request.json();
     
     if (!message) {
@@ -17,8 +23,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Groq client at request-time to avoid build-time/env issues
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
+    let apiKey: string;
+    try {
+      apiKey = getGroqApiKey();
+    } catch (e) {
       console.error('GROQ_API_KEY is not set');
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
@@ -98,10 +106,21 @@ Keep responses concise but informative. Do not use asterisks or bold formatting 
 
   } catch (error) {
     console.error('Error in chat API:', error);
+    // Ensure UI still gets a readable message
+    const safeMsg = "I'm having some trouble responding right now. Please try again in a moment.";
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { message: safeMsg, error: (error as Error)?.message ?? 'Internal server error' },
       { status: 500 }
     );
   }
+}
+
+// Optional: simple GET handler for health checks and to avoid 404 on GET
+export async function GET() {
+  // Restrict to production on Vercel; allow local development
+  if (process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production') {
+    return NextResponse.json({ error: 'API not available in this environment' }, { status: 403 });
+  }
+  return NextResponse.json({ status: 'ok' });
 }
 
