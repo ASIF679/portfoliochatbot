@@ -68,7 +68,20 @@ Keep responses concise but informative. Do not use asterisks or bold formatting 
       max_tokens: 1000,
     });
 
-    const response = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that request.";
+    // Defensive parsing to prevent empty messages
+    let response = "";
+    if (completion && Array.isArray(completion.choices) && completion.choices.length > 0) {
+      const content = completion.choices[0]?.message?.content;
+      if (typeof content === 'string') {
+        response = content.trim();
+      } else if (content != null) {
+        // Coerce non-string content to string if needed
+        response = String(content).trim();
+      }
+    }
+    if (!response) {
+      response = "I'm here and ready to help about my skills, projects, or experience. Could you please rephrase your question?";
+    }
     
     // Check if we should include project cards
     const shouldIncludeProjects = intent === 'projects' && (
